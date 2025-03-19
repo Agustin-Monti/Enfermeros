@@ -36,25 +36,20 @@ const Enfermeros = () => {
     const verificarAcceso = async () => {
       const admin = await verificarAdmin();
       if (!admin) {
-        router.push("/"); // Redirigir al login si no es admin
+        router.push("/"); // Redirigir si no es admin
       } else {
         setEsAdmin(true);
       }
     };
     verificarAcceso();
   }, [router]);
-
-  if (esAdmin === null) {
-    return <p>Cargando...</p>; // Mostrar un mensaje de carga mientras se verifica
-  }
-
-  if (!esAdmin) {
-    return null; // No mostrar nada si no es admin (ya se redirigió)
-  }
-
+  
+  // Solo ejecutamos fetchData si esAdmin es true
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (esAdmin) {
+      fetchData();
+    }
+  }, [esAdmin]); // Ahora depende de esAdmin
 
   // Función para manejar la edición de un enfermero
   const handleEdit = (id: string) => {
