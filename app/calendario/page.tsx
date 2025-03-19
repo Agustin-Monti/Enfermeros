@@ -34,7 +34,7 @@ const Calendario = () => {
   const [esAdmin, setEsAdmin] = useState<boolean | null>(null);
   const router = useRouter();
 
- // ✅ 1️⃣ Verificar si el usuario es admin
+  // ✅ 1️⃣ Verificar si el usuario es admin
   useEffect(() => {
     const verificarAcceso = async () => {
       const admin = await verificarAdmin();
@@ -47,30 +47,42 @@ const Calendario = () => {
     verificarAcceso();
   }, [router]);
 
+ 
+  
+
+  // ✅ 2️⃣ Cargar datos iniciales (enfermeros y ausencias)
   useEffect(() => {
     cargarEnfermeros();
     cargarAusenciasDesdeLocalStorage();
   }, []);
 
+  
+
   // Actualizar el calendario cuando cambien las ausencias
   useEffect(() => {
-    const calendarioActualizado = calendario.map((dia) => {
-      const fechaStr = dia.fecha;
-      const enfermerosNoDisponibles = [
-        ...(enfermerosAusentes[fechaStr] || []),
-        ...(enfermerosFindesLibres[fechaStr] || []),
-      ];
-
-      return {
-        ...dia,
-        mañana: reemplazarEnfermero([...dia.mañana], fechaStr),
-        tarde: reemplazarEnfermero([...dia.tarde], fechaStr),
-        noche: reemplazarEnfermero([...dia.noche], fechaStr),
-      };
+    setCalendario((prevCalendario) => {
+      const calendarioActualizado = prevCalendario.map((dia) => {
+        const fechaStr = dia.fecha;
+        const enfermerosNoDisponibles = [
+          ...(enfermerosAusentes[fechaStr] || []),
+          ...(enfermerosFindesLibres[fechaStr] || []),
+        ];
+  
+        return {
+          ...dia,
+          mañana: reemplazarEnfermero([...dia.mañana], fechaStr),
+          tarde: reemplazarEnfermero([...dia.tarde], fechaStr),
+          noche: reemplazarEnfermero([...dia.noche], fechaStr),
+        };
+      });
+  
+      // Verificar si hay cambios antes de actualizar
+      return JSON.stringify(prevCalendario) === JSON.stringify(calendarioActualizado) 
+        ? prevCalendario 
+        : calendarioActualizado;
     });
-
-    setCalendario(calendarioActualizado);
   }, [enfermerosAusentes, enfermerosFindesLibres]);
+  
 
   const cargarEnfermeros = async () => {
     setLoading(true);
