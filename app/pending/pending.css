@@ -1,0 +1,56 @@
+/* Contenedor principal */
+.status-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+  }
+  
+  /* Tarjeta de estado */
+  .status-card {
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    border-left: 5px solid #ffc107;
+  }
+  
+  /* Icono */
+  .icon {
+    margin-bottom: 1rem;
+  }
+  
+  .icon svg {
+    stroke: #ffc107;
+    display: inline-block;
+  }
+  
+  /* Títulos y texto */
+  h1 {
+    font-size: 24px;
+    margin: 0 0 1rem 0;
+  }
+  
+  .color {
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Botón */
+  .go-home-btn {
+    padding: 0.8rem 1.5rem;
+    font-size: 16px;
+    background-color: #0a3fd1;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .go-home-btn:hover {
+    background-color: #0a1172;
+  }
+  

@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+
+.negro{color: #0a0a0a;}
+.azul{color: #1d3ceb;}
+
+/*BOTON FLOTANTE*/
+
+/* Efecto de borde pulsante */
+@keyframes borderPulse {
+  0% {
+    border-color: rgba(59, 130, 246, 0.3); /* Color azul claro */
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    border-color: rgba(59, 130, 246, 1); /* Azul intenso */
+    box-shadow: 0 0 10px 5px rgba(59, 130, 246, 0.5);
+  }
+  100% {
+    border-color: rgba(59, 130, 246, 0.3); /* Azul claro */
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+}
+
+/* Animación para el botón */
+.animate-border-pulse {
+  animation: borderPulse 2s infinite ease-in-out;
+}
+
+textarea{
+  resize: none;
+}
+
+/* The expandable menu is initially hidden */
+.expandable-menu {
+  display: none; /* Initially hidden */
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  width: 200px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  transform: translateY(-10px);
+  opacity: 0;
+}
+
+/* When the checkbox is checked, the menu is displayed */
+#menu-toggle:checked ~ .expandable-menu {
+  display: block;
+  transform: translateY(0); /* Slide the menu into view */
+  opacity: 1;
+}
+
+/* Styling for the links inside the menu */
+.expandable-menu a,
+.expandable-menu button {
+  display: block;
+  padding: 8px 16px;
+  color: #333;
+  text-decoration: none;
+  margin-bottom: 5px;
+}
+
+.expandable-menu a:hover,
+.expandable-menu button:hover {
+  background-color: #f0f0f0;
+}
+
+/* Optional: Styling for the button inside the menu */
+.expandable-menu button {
+  width: 100%;
+  padding: 8px;
+  background-color: #ff0000;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.expandable-menu button:hover {
+  background-color: #cc0000;
+}
+
+/* Ensure the label (user icon) is clickable */
+label {
+  cursor: pointer;
+}
+
+/* No hover behavior for larger screens - only click-based toggle */
+/* Hide the menu on larger screens */
+@media (min-width: 768px) {
+  #menu-toggle:checked ~ .expandable-menu {
+    display: block;
+    opacity: 1;
+    transform: translateY(0); /* Ensures smooth transition */
+  }
+}
