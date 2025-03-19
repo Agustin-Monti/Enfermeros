@@ -34,6 +34,7 @@ const Calendario = () => {
   const [esAdmin, setEsAdmin] = useState<boolean | null>(null);
   const router = useRouter();
 
+ // ✅ 1️⃣ Verificar si el usuario es admin
   useEffect(() => {
     const verificarAcceso = async () => {
       const admin = await verificarAdmin();
@@ -45,14 +46,6 @@ const Calendario = () => {
     };
     verificarAcceso();
   }, [router]);
-
-  if (esAdmin === null) {
-    return <p>Cargando...</p>; // Mostrar un mensaje de carga mientras se verifica
-  }
-
-  if (!esAdmin) {
-    return null; // No mostrar nada si no es admin (ya se redirigió)
-  }
 
   useEffect(() => {
     cargarEnfermeros();
