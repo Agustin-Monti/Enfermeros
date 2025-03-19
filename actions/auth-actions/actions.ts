@@ -82,7 +82,7 @@ export const signInAction = async (formData: FormData) => {
   }
 
   // Redirigir al dashboard si es admin
-  return redirect("/");
+  return redirect("/enfermeros");
 };
 
 export const forgotPasswordAction = async (formData: FormData) => {
