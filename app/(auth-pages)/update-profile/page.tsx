@@ -1,6 +1,5 @@
 "use client"; // Convertimos este componente en un cliente
 import React, { useEffect, useState } from "react";
-import { updateProfileAction } from "@/actions/profile-actions/index";
 import { FormMessage, Message } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
