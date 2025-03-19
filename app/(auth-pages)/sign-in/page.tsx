@@ -6,13 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 
-export default function Login({ searchParams }: { searchParams: Message }) {
+export default function Login({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[]>;
+}) {
+  // Convertimos searchParams en un objeto Message válido
+  const message: Message | null = searchParams.success
+    ? { success: String(searchParams.success) }
+    : searchParams.error
+    ? { error: String(searchParams.error) }
+    : searchParams.message
+    ? { message: String(searchParams.message) }
+    : null;
+
   return (
     <form className="flex flex-col mx-auto my-auto justify-center p-6 w-[80vw] md:w-[30vw] rounded-md">
       <h1 className="text-3xl font-semibold text-center mb-6">Iniciar Sesión</h1>
 
-      {/* Mostrar mensaje de error */}
-      <FormMessage message={searchParams} />
+      {/* Mostrar mensaje de error si existe */}
+      {message && <FormMessage message={message} />}
 
       <p className="text-sm text-gray-600 mb-4">
         No tiene cuenta?{" "}
