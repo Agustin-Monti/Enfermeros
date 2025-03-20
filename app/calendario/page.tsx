@@ -7,6 +7,7 @@ import { getEnfermerosTurnos, guardarAusencias, guardarCalendario } from "@/acti
 import * as XLSX from "xlsx";
 import Link from "next/link";
 import { verificarAdmin } from "@/actions/auth-actions/actions";
+import { getCookie, setCookie } from "cookies-next"; // Importar funciones de cookies-next
 
 interface Ausencia {
   nombre: string;
@@ -53,20 +54,24 @@ const Calendario = () => {
   // Cargar datos iniciales (enfermeros y ausencias)
   useEffect(() => {
     cargarEnfermeros();
-    cargarAusenciasDesdeLocalStorage(); // Esto solo se ejecutará en el cliente
+    cargarAusenciasDesdeCookies(); // Esto solo se ejecutará en el cliente
   }, []);
 
-  const cargarAusenciasDesdeLocalStorage = () => {
-    if (isClient()) {
-      const ausenciasGuardadas = JSON.parse(localStorage.getItem("ausencias") || "[]");
-      setAusencias(ausenciasGuardadas); // Guardar en el estado
-      if (ausenciasGuardadas.length > 0) {
-        ausenciasGuardadas.forEach((ausencia: Ausencia) => {
-          agregarAusencia(ausencia.nombre, ausencia.fechaInicio, ausencia.fechaFin, ausencia.motivo);
-        });
-        setMostrarBotonGuardar(true);
-      }
+  // Cargar ausencias desde las cookies
+  const cargarAusenciasDesdeCookies = () => {
+    const ausenciasGuardadas = JSON.parse(getCookie("ausencias") as string || "[]");
+    setAusencias(ausenciasGuardadas); // Guardar en el estado
+    if (ausenciasGuardadas.length > 0) {
+      ausenciasGuardadas.forEach((ausencia: Ausencia) => {
+        agregarAusencia(ausencia.nombre, ausencia.fechaInicio, ausencia.fechaFin, ausencia.motivo);
+      });
+      setMostrarBotonGuardar(true);
     }
+  };
+
+  // Guardar ausencias en las cookies
+  const guardarAusenciasEnCookies = (ausencias: Ausencia[]) => {
+    setCookie("ausencias", JSON.stringify(ausencias));
   };
 
   // Actualizar el calendario cuando cambien las ausencias
@@ -153,14 +158,14 @@ const Calendario = () => {
         return nuevasAusencias;
       });
 
-      // Guardar la ausencia en localStorage
+      // Guardar la ausencia en las cookies
       const nuevaAusencia: Ausencia = { nombre, fechaInicio, fechaFin, motivo };
-      const ausenciasGuardadas = JSON.parse(localStorage.getItem("ausencias") || "[]");
-      ausenciasGuardadas.push(nuevaAusencia);
-      localStorage.setItem("ausencias", JSON.stringify(ausenciasGuardadas));
+      const nuevasAusencias = [...ausencias, nuevaAusencia];
+      setAusencias(nuevasAusencias);
+      guardarAusenciasEnCookies(nuevasAusencias);
 
       console.log(`Ausencia registrada para ${nombre} desde ${fechaInicio} hasta ${fechaFin}. Motivo: ${motivo}`);
-      setMostrarBotonGuardar(true); // Mostrar el botón si hay ausencias
+      setMostrarBotonGuardar(true);
     }
   };
 
@@ -170,14 +175,13 @@ const Calendario = () => {
   };
 
   const handleGuardarTodasAusencias = async () => {
-    const ausenciasGuardadas = JSON.parse(localStorage.getItem("ausencias") || "[]");
-    if (ausenciasGuardadas.length === 0) {
+    if (ausencias.length === 0) {
       alert("No hay ausencias para guardar.");
       return;
     }
 
     try {
-      for (const ausencia of ausenciasGuardadas) {
+      for (const ausencia of ausencias) {
         await guardarAusencias({
           nombre_enfermero: ausencia.nombre,
           fecha_inicio: ausencia.fechaInicio,
@@ -186,7 +190,8 @@ const Calendario = () => {
         });
       }
       alert("Todas las ausencias han sido guardadas correctamente.");
-      localStorage.removeItem("ausencias"); // Limpiar el localStorage
+      setAusencias([]); // Limpiar el estado
+      guardarAusenciasEnCookies([]); // Limpiar las cookies
       setMostrarBotonGuardar(false); // Ocultar el botón después de guardar
     } catch (error) {
       console.error("Error al guardar las ausencias:", error);
@@ -283,7 +288,7 @@ const Calendario = () => {
       <div className="mb-6 p-4 border rounded-lg shadow bg-gray-100">
         <h2 className="text-lg font-bold mb-2">📋 Ausencias Registradas</h2>
         <ul>
-          {JSON.parse(localStorage.getItem("ausencias") || "[]").map((ausencia: Ausencia, index: number) => (
+          {ausencias.map((ausencia, index) => (
             <li key={index} className="mb-2">
               <strong>{ausencia.nombre}</strong>: {ausencia.fechaInicio} a {ausencia.fechaFin} - Motivo: {ausencia.motivo}
             </li>
