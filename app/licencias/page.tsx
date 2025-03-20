@@ -14,25 +14,18 @@ const Licencias = () => {
   const router = useRouter();
 
 
+  // ✅ 1️⃣ Verificar si el usuario es admin
   useEffect(() => {
-      const verificarAcceso = async () => {
-        const admin = await verificarAdmin();
-        if (!admin) {
-          router.push("/"); // Redirigir al login si no es admin
-        } else {
-          setEsAdmin(true);
-        }
-      };
-      verificarAcceso();
-    }, [router]);
-  
-    if (esAdmin === null) {
-      return <p>Cargando...</p>; // Mostrar un mensaje de carga mientras se verifica
-    }
-  
-    if (!esAdmin) {
-      return null; // No mostrar nada si no es admin (ya se redirigió)
-    }
+    const verificarAcceso = async () => {
+      const admin = await verificarAdmin();
+      if (!admin) {
+        router.push("/"); // Redirigir al login si no es admin
+      } else {
+        setEsAdmin(true);
+      }
+    };
+    verificarAcceso();
+  }, [router]);
 
   useEffect(() => {
     const cargarAusencias = async () => {
