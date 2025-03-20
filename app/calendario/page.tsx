@@ -174,6 +174,19 @@ const Calendario = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const eliminarAusencia = (index: number) => {
+    const nuevasAusencias = [...ausencias];
+    nuevasAusencias.splice(index, 1);
+    setAusencias(nuevasAusencias);
+    guardarAusenciasEnCookies(nuevasAusencias);
+  };
+  
+  const eliminarTodasAusencias = () => {
+    setAusencias([]);
+    guardarAusenciasEnCookies([]);
+    setMostrarBotonGuardar(false);
+  };
+
   const handleGuardarTodasAusencias = async () => {
     if (ausencias.length === 0) {
       alert("No hay ausencias para guardar.");
@@ -214,6 +227,8 @@ const Calendario = () => {
       alert("Hubo un error al guardar el calendario.");
     }
   };
+
+  
 
   const descargarCalendarioExcel = () => {
     const datos = calendario.map((dia) => {
@@ -291,6 +306,12 @@ const Calendario = () => {
           {ausencias.map((ausencia, index) => (
             <li key={index} className="mb-2">
               <strong>{ausencia.nombre}</strong>: {ausencia.fechaInicio} a {ausencia.fechaFin} - Motivo: {ausencia.motivo}
+              <button
+                onClick={() => eliminarAusencia(index)}
+                className="bg-red-500 text-white px-2 py-1 rounded-lg ml-2"
+              >
+                🗑️ Eliminar
+              </button>
             </li>
           ))}
         </ul>
