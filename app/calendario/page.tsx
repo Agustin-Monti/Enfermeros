@@ -15,6 +15,8 @@ interface Ausencia {
   motivo: string;
 }
 
+const isClient = () => typeof window !== "undefined";
+
 const Calendario = () => {
   const [calendario, setCalendario] = useState<Dia[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,9 +34,10 @@ const Calendario = () => {
   const [mostrarBotonGuardar, setMostrarBotonGuardar] = useState(false);
   const [mostrarBotonGuardarCalendario, setMostrarBotonGuardarCalendario] = useState(false);
   const [esAdmin, setEsAdmin] = useState<boolean | null>(null);
+  const [ausencias, setAusencias] = useState<Ausencia[]>([]); // Nuevo estado para las ausencias
   const router = useRouter();
 
-  // ✅ 1️⃣ Verificar si el usuario es admin
+  // Verificar si el usuario es admin
   useEffect(() => {
     const verificarAcceso = async () => {
       const admin = await verificarAdmin();
@@ -47,21 +50,24 @@ const Calendario = () => {
     verificarAcceso();
   }, [router]);
 
-  // ✅ 2️⃣ Cargar datos iniciales (enfermeros y ausencias)
+  // Cargar datos iniciales (enfermeros y ausencias)
   useEffect(() => {
-    const cargarAusenciasDesdeLocalStorage = () => {
+    cargarEnfermeros();
+    cargarAusenciasDesdeLocalStorage(); // Esto solo se ejecutará en el cliente
+  }, []);
+
+  const cargarAusenciasDesdeLocalStorage = () => {
+    if (isClient()) {
       const ausenciasGuardadas = JSON.parse(localStorage.getItem("ausencias") || "[]");
+      setAusencias(ausenciasGuardadas); // Guardar en el estado
       if (ausenciasGuardadas.length > 0) {
         ausenciasGuardadas.forEach((ausencia: Ausencia) => {
           agregarAusencia(ausencia.nombre, ausencia.fechaInicio, ausencia.fechaFin, ausencia.motivo);
         });
-        setMostrarBotonGuardar(true); // Mostrar el botón si hay ausencias
+        setMostrarBotonGuardar(true);
       }
-    };
-
-    cargarEnfermeros();
-    cargarAusenciasDesdeLocalStorage();
-  }, []);
+    }
+  };
 
   // Actualizar el calendario cuando cambien las ausencias
   useEffect(() => {
