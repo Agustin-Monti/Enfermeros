@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { generarTurnos, Dia, Enfermero } from "@/utils/generarTurnos";
-import { getEnfermerosTurnos, guardarAusencias, guardarCalendario } from "@/actions/enfermero-actions"; // Importar guardarAusencias
+import { getEnfermerosTurnos, guardarAusencias, guardarCalendario } from "@/actions/enfermero-actions";
 import * as XLSX from "xlsx";
 import Link from "next/link";
 import { verificarAdmin } from "@/actions/auth-actions/actions";
@@ -47,16 +47,21 @@ const Calendario = () => {
     verificarAcceso();
   }, [router]);
 
- 
-  
-
   // ✅ 2️⃣ Cargar datos iniciales (enfermeros y ausencias)
   useEffect(() => {
+    const cargarAusenciasDesdeLocalStorage = () => {
+      const ausenciasGuardadas = JSON.parse(localStorage.getItem("ausencias") || "[]");
+      if (ausenciasGuardadas.length > 0) {
+        ausenciasGuardadas.forEach((ausencia: Ausencia) => {
+          agregarAusencia(ausencia.nombre, ausencia.fechaInicio, ausencia.fechaFin, ausencia.motivo);
+        });
+        setMostrarBotonGuardar(true); // Mostrar el botón si hay ausencias
+      }
+    };
+
     cargarEnfermeros();
     cargarAusenciasDesdeLocalStorage();
   }, []);
-
-  
 
   // Actualizar el calendario cuando cambien las ausencias
   useEffect(() => {
@@ -67,7 +72,7 @@ const Calendario = () => {
           ...(enfermerosAusentes[fechaStr] || []),
           ...(enfermerosFindesLibres[fechaStr] || []),
         ];
-  
+
         return {
           ...dia,
           mañana: reemplazarEnfermero([...dia.mañana], fechaStr),
@@ -75,14 +80,13 @@ const Calendario = () => {
           noche: reemplazarEnfermero([...dia.noche], fechaStr),
         };
       });
-  
+
       // Verificar si hay cambios antes de actualizar
-      return JSON.stringify(prevCalendario) === JSON.stringify(calendarioActualizado) 
-        ? prevCalendario 
+      return JSON.stringify(prevCalendario) === JSON.stringify(calendarioActualizado)
+        ? prevCalendario
         : calendarioActualizado;
     });
   }, [enfermerosAusentes, enfermerosFindesLibres]);
-  
 
   const cargarEnfermeros = async () => {
     setLoading(true);
@@ -93,16 +97,6 @@ const Calendario = () => {
       console.error("Error al cargar enfermeros:", error);
     }
     setLoading(false);
-  };
-
-  const cargarAusenciasDesdeLocalStorage = () => {
-    const ausenciasGuardadas = JSON.parse(localStorage.getItem("ausencias") || "[]");
-    if (ausenciasGuardadas.length > 0) {
-      ausenciasGuardadas.forEach((ausencia: Ausencia) => {
-        agregarAusencia(ausencia.nombre, ausencia.fechaInicio, ausencia.fechaFin, ausencia.motivo);
-      });
-      setMostrarBotonGuardar(true); // Mostrar el botón si hay ausencias
-    }
   };
 
   const cargarTurnos = () => {
@@ -214,7 +208,7 @@ const Calendario = () => {
     const datos = calendario.map((dia) => {
       const fecha = new Date(dia.fecha);
       return {
-        Fecha: fecha.toLocaleDateString("es-ES", { weekday: "long", day: "numeric",}),
+        Fecha: fecha.toLocaleDateString("es-ES", { weekday: "long", day: "numeric" }),
         Mañana: dia.mañana.map((e) => e.nombre).join(", "),
         Tarde: dia.tarde.map((e) => e.nombre).join(", "),
         Noche: dia.noche.map((e) => e.nombre).join(", "),
@@ -298,7 +292,6 @@ const Calendario = () => {
             💾 Guardar Todas las Ausencias
           </button>
         )}
-        
       </div>
 
       {/* Selección de mes y año */}
