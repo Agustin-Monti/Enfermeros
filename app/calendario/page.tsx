@@ -297,33 +297,32 @@ const Calendario = () => {
     }
   };
 
-  const agregarJefesAlCalendario = (calendario: any[], jefeManana?: Enfermero, jefeTarde?: Enfermero) => {
-    return calendario.map((dia) => {
-      const [añoFecha, mesFecha, diaFecha] = dia.fecha.split("-").map(Number);
-      const fecha = new Date(añoFecha, mesFecha - 1, diaFecha);
-      const diaSemana = fecha.toLocaleDateString("es-ES", { weekday: "long" });
-  
-      let mañana = dia.mañana.map((e: any) => e.nombre).join(", ");
-      let tarde = dia.tarde.map((e: any) => e.nombre).join(", ");
-      let noche = dia.noche.map((e: any) => e.nombre).join(", ");
-  
-      if (["lunes", "martes", "miércoles", "jueves", "viernes"].includes(diaSemana.toLowerCase())) {
-        if (jefeManana) {
-          mañana = `${jefeManana.nombre}, ${mañana}`;
-        }
-        if (jefeTarde) {
-          tarde = `${jefeTarde.nombre}, ${tarde}`;
-        }
+  const agregarJefesAlCalendario = (calendario: Dia[], jefeManana?: Enfermero, jefeTarde?: Enfermero) => {
+  return calendario.map((dia) => {
+    const [añoFecha, mesFecha, diaFecha] = dia.fecha.split("-").map(Number);
+    const fecha = new Date(añoFecha, mesFecha - 1, diaFecha);
+    const diaSemana = fecha.toLocaleDateString("es-ES", { weekday: "long" });
+
+    // Función para procesar un turno y asegurar que el jefe esté primero y sin duplicados
+    const procesarTurno = (turno: Enfermero[], jefe?: Enfermero) => {
+      // Filtrar primero para eliminar al jefe si ya está presente
+      const sinJefe = jefe ? turno.filter(e => e.id !== jefe.id) : turno;
+      
+      // Si hay jefe y es día laboral, lo agregamos al inicio
+      if (jefe && ["lunes", "martes", "miércoles", "jueves", "viernes"].includes(diaSemana.toLowerCase())) {
+        return [jefe, ...sinJefe];
       }
-  
-      return {
-        ...dia,
-        mañana: mañana.split(", ").filter(Boolean),
-        tarde: tarde.split(", ").filter(Boolean),
-        noche: noche.split(", ").filter(Boolean),
-      };
-    });
-  };
+      return [...sinJefe];
+    };
+
+    return {
+      ...dia,
+      mañana: procesarTurno(dia.mañana, jefeManana),
+      tarde: procesarTurno(dia.tarde, jefeTarde),
+      noche: dia.noche // Los jefes no trabajan de noche
+    };
+  });
+};
 
   const handleGuardarCalendario = async () => {
     try {
