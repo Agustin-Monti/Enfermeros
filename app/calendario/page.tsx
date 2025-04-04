@@ -355,25 +355,29 @@ const Calendario = () => {
       const fecha = new Date(añoFecha, mesFecha - 1, diaFecha);
       const diaSemana = fecha.toLocaleDateString("es-ES", { weekday: "long" });
   
-      let mañana = dia.mañana.map((e: any) => e.nombre).join(", ");
-      let tarde = dia.tarde.map((e: any) => e.nombre).join(", ");
-      let noche = dia.noche.map((e: any) => e.nombre).join(", ");
-  
-      if (["lunes", "martes", "miércoles", "jueves", "viernes"].includes(diaSemana.toLowerCase())) {
-        if (jefeManana) {
-          mañana = `${jefeManana.nombre}, ${mañana}`;
+      // Función para obtener nombres únicos de enfermeros en un turno
+      const obtenerNombresTurno = (turno: Enfermero[]) => {
+        const nombres = turno.map(e => e.nombre);
+        
+        // Si es día laboral y hay jefe, asegurarnos de que esté primero y sin duplicados
+        if (["lunes", "martes", "miércoles", "jueves", "viernes"].includes(diaSemana.toLowerCase())) {
+          if (turno === dia.mañana && jefeManana && !nombres.includes(jefeManana.nombre)) {
+            nombres.unshift(jefeManana.nombre);
+          } else if (turno === dia.tarde && jefeTarde && !nombres.includes(jefeTarde.nombre)) {
+            nombres.unshift(jefeTarde.nombre);
+          }
         }
-        if (jefeTarde) {
-          tarde = `${jefeTarde.nombre}, ${tarde}`;
-        }
-      }
+        
+        // Eliminar duplicados manteniendo el orden
+        return [...new Set(nombres)].join(", ");
+      };
   
       return {
         Fecha: fecha.toLocaleDateString("es-ES", { weekday: "long", day: "numeric" }),
-        Mañana: mañana,
-        Tarde: tarde,
-        Noche: noche,
-        "Días Trabajados": dia.mañana.concat(dia.tarde, dia.noche)
+        Mañana: obtenerNombresTurno(dia.mañana),
+        Tarde: obtenerNombresTurno(dia.tarde),
+        Noche: obtenerNombresTurno(dia.noche),
+        "Días Trabajados": [...dia.mañana, ...dia.tarde, ...dia.noche]
           .reduce((acc: Record<string, number>, e: Enfermero) => {
             acc[e.nombre] = (diasTrabajadosPorEnfermero.get(e.id) || 0);
             return acc;
