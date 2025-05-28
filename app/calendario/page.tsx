@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { generarTurnos, Dia, Enfermero, convertirPreferencia } from "@/utils/generarTurnos";
 import { getEnfermerosTurnos, guardarAusencias, guardarCalendario } from "@/actions/enfermero-actions";
@@ -8,6 +8,7 @@ import * as XLSX from "xlsx";
 import Link from "next/link";
 import { verificarAdmin } from "@/actions/auth-actions/actions";
 import { getCookie, setCookie } from "cookies-next";
+import { EnfermeroSelectorModal } from "@/components/EnfermeroSelectorModal";
 
 interface Ausencia {
   nombre: string;
@@ -35,6 +36,11 @@ const Calendario = () => {
   const [esAdmin, setEsAdmin] = useState<boolean | null>(null);
   const [ausencias, setAusencias] = useState<Ausencia[]>([]);
   const [diasTrabajadosPorEnfermero, setDiasTrabajadosPorEnfermero] = useState<Map<number, number>>(new Map());
+  const [enfermerosTemporales, setEnfermerosTemporales] = useState<Enfermero[]>([]);
+  const [turnoParaAgregar, setTurnoParaAgregar] = useState<{
+    fecha: string;
+    turno: "mañana" | "tarde" | "noche";
+  } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -114,7 +120,6 @@ const Calendario = () => {
     return suplentesDisponibles[0];
   };
 
-  // Función reemplazarEnfermero actualizada
   const reemplazarEnfermero = (
     turno: Enfermero[], 
     fecha: string,
@@ -129,7 +134,6 @@ const Calendario = () => {
     });
   };
 
-  // Modificar el useEffect que maneja cambios en el calendario
   useEffect(() => {
     setCalendario((prevCalendario) => {
       const calendarioActualizado = prevCalendario.map((dia) => {
@@ -156,7 +160,6 @@ const Calendario = () => {
       const data = await getEnfermerosTurnos();
       setEnfermeros(data);
       
-      // Inicializar días trabajados
       const nuevosDiasTrabajados = new Map<number, number>();
       data.forEach(e => nuevosDiasTrabajados.set(e.id, 0));
       setDiasTrabajadosPorEnfermero(nuevosDiasTrabajados);
@@ -166,18 +169,27 @@ const Calendario = () => {
     setLoading(false);
   };
 
-  // Modificar la función cargarTurnos
   const cargarTurnos = () => {
     setLoading(true);
-    const { calendario: turnosGenerados, diasTrabajados } = generarTurnos(enfermeros, mes, año);
-    
-    setDiasTrabajadosPorEnfermero(diasTrabajados);
-    setCalendario(turnosGenerados);
-    setMostrarBotonGuardarCalendario(true);
+    try {
+      const todosEnfermeros = [...enfermeros, ...enfermerosTemporales];
+      const { calendario: turnosGenerados, diasTrabajados } = generarTurnos(
+        todosEnfermeros, 
+        mes, 
+        año,
+        enfermerosAusentes
+      );
+      
+      setDiasTrabajadosPorEnfermero(diasTrabajados);
+      setCalendario(turnosGenerados);
+      setMostrarBotonGuardarCalendario(true);
+    } catch (error) {
+      console.error("Error al generar turnos:", error);
+      alert("Hubo un error al generar los turnos.");
+    }
     setLoading(false);
   };
 
-  // Función para actualizar días trabajados cuando hay ausencias
   const actualizarDiasTrabajadosPorAusencia = (
     enfermeroAusente: Enfermero,
     fechaInicio: string,
@@ -188,23 +200,20 @@ const Calendario = () => {
     const fin = new Date(fechaFin);
     const nuevosDiasTrabajados = new Map(diasTrabajadosPorEnfermero);
     
-    // Calcular cantidad de días de ausencia (excluyendo fines de semana)
     let diasAusencia = 0;
     for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
       const diaSemana = d.getDay();
-      if (diaSemana !== 0 && diaSemana !== 6) { // Excluir domingo (0) y sábado (6)
+      if (diaSemana !== 0 && diaSemana !== 6) {
         diasAusencia++;
       }
     }
 
-    // Reducir días trabajados del enfermero ausente
     const diasActualesAusente = nuevosDiasTrabajados.get(enfermeroAusente.id) || 0;
     nuevosDiasTrabajados.set(
       enfermeroAusente.id, 
-      Math.max(0, diasActualesAusente - diasAusencia) // No permitir valores negativos
+      Math.max(0, diasActualesAusente - diasAusencia)
     );
 
-    // Aumentar días trabajados del suplente si existe
     if (suplente) {
       const diasActualesSuplente = nuevosDiasTrabajados.get(suplente.id) || 0;
       nuevosDiasTrabajados.set(suplente.id, diasActualesSuplente + diasAusencia);
@@ -213,7 +222,6 @@ const Calendario = () => {
     setDiasTrabajadosPorEnfermero(nuevosDiasTrabajados);
   };
 
-  // Función modificada para agregar ausencias
   const agregarAusencia = (nombre: string, fechaInicio: string, fechaFin: string, motivo: string) => {
     const inicio = new Date(fechaInicio);
     const fin = new Date(fechaFin);
@@ -225,12 +233,10 @@ const Calendario = () => {
         fechasAusencia.push(d.toISOString().split("T")[0]);
       }
 
-      // Encontrar suplente para el primer día (asumimos mismo suplente para todos los días)
       const primerDia = fechasAusencia[0];
       const turnoPrimerDia = calendario.find(d => d.fecha === primerDia)?.mañana || [];
       const suplente = encontrarSuplenteAdecuado(turnoPrimerDia, [nombre], primerDia);
 
-      // Actualizar días trabajados
       actualizarDiasTrabajadosPorAusencia(enfermeroAusente, fechaInicio, fechaFin, suplente);
 
       setEnfermerosAusentes((prev) => {
@@ -298,45 +304,42 @@ const Calendario = () => {
   };
 
   const agregarJefesAlCalendario = (calendario: Dia[], jefeManana?: Enfermero, jefeTarde?: Enfermero) => {
-  return calendario.map((dia) => {
-    const [añoFecha, mesFecha, diaFecha] = dia.fecha.split("-").map(Number);
-    const fecha = new Date(añoFecha, mesFecha - 1, diaFecha);
-    const diaSemana = fecha.toLocaleDateString("es-ES", { weekday: "long" });
+    return calendario.map((dia) => {
+      const [añoFecha, mesFecha, diaFecha] = dia.fecha.split("-").map(Number);
+      const fecha = new Date(añoFecha, mesFecha - 1, diaFecha);
+      const diaSemana = fecha.toLocaleDateString("es-ES", { weekday: "long" });
 
-    // Función para procesar un turno y asegurar que el jefe esté primero y sin duplicados
-    const procesarTurno = (turno: Enfermero[], jefe?: Enfermero) => {
-      // Filtrar primero para eliminar al jefe si ya está presente
-      const sinJefe = jefe ? turno.filter(e => e.id !== jefe.id) : turno;
-      
-      // Si hay jefe y es día laboral, lo agregamos al inicio
-      if (jefe && ["lunes", "martes", "miércoles", "jueves", "viernes"].includes(diaSemana.toLowerCase())) {
-        return [jefe, ...sinJefe];
-      }
-      return [...sinJefe];
-    };
+      const procesarTurno = (turno: Enfermero[], jefe?: Enfermero) => {
+        const sinJefe = jefe ? turno.filter(e => e.id !== jefe.id) : turno;
+        
+        if (jefe && ["lunes", "martes", "miércoles", "jueves", "viernes"].includes(diaSemana.toLowerCase())) {
+          return [jefe, ...sinJefe];
+        }
+        return [...sinJefe];
+      };
 
-    return {
-      ...dia,
-      mañana: procesarTurno(dia.mañana, jefeManana),
-      tarde: procesarTurno(dia.tarde, jefeTarde),
-      noche: dia.noche // Los jefes no trabajan de noche
-    };
-  });
-};
+      return {
+        ...dia,
+        mañana: procesarTurno(dia.mañana, jefeManana),
+        tarde: procesarTurno(dia.tarde, jefeTarde),
+        noche: dia.noche
+      };
+    });
+  };
 
   const handleGuardarCalendario = async () => {
     try {
       const jefeManana = enfermeros.find((e) => e.rango === "Jefe" && e.preferencias.some((p) => convertirPreferencia(p) === "M"));
       const jefeTarde = enfermeros.find((e) => e.rango === "Jefe" && e.preferencias.some((p) => convertirPreferencia(p) === "T"));
-  
+    
       const calendarioConJefes = agregarJefesAlCalendario(calendario, jefeManana, jefeTarde);
-  
+    
       await guardarCalendario({
         mes,
         año,
         calendario: calendarioConJefes,
       });
-  
+    
       alert("Calendario guardado correctamente.");
       setMostrarBotonGuardarCalendario(false);
     } catch (error) {
@@ -354,11 +357,9 @@ const Calendario = () => {
       const fecha = new Date(añoFecha, mesFecha - 1, diaFecha);
       const diaSemana = fecha.toLocaleDateString("es-ES", { weekday: "long" });
   
-      // Función para obtener nombres únicos de enfermeros en un turno
       const obtenerNombresTurno = (turno: Enfermero[]) => {
         const nombres = turno.map(e => e.nombre);
         
-        // Si es día laboral y hay jefe, asegurarnos de que esté primero y sin duplicados
         if (["lunes", "martes", "miércoles", "jueves", "viernes"].includes(diaSemana.toLowerCase())) {
           if (turno === dia.mañana && jefeManana && !nombres.includes(jefeManana.nombre)) {
             nombres.unshift(jefeManana.nombre);
@@ -367,7 +368,6 @@ const Calendario = () => {
           }
         }
         
-        // Eliminar duplicados manteniendo el orden
         return [...new Set(nombres)].join(", ");
       };
   
@@ -389,6 +389,69 @@ const Calendario = () => {
     XLSX.utils.book_append_sheet(libro, hoja, "Calendario de Turnos");
     XLSX.writeFile(libro, `Calendario_Turnos_${mes}_${año}.xlsx`);
   };
+
+  const agregarEnfermeroTemporal = () => {
+    const nombre = prompt("Ingrese el nombre del enfermero temporal:");
+    if (nombre && nombre.trim() !== "") {
+      const nuevoEnfermero: Enfermero = {
+        id: Date.now(),
+        nombre: nombre.trim(),
+        titular: false,
+        preferencias: ["M", "T", "N"],
+        rango: "Suplente",
+        vacaciones: 0,
+        franco: 0,
+        diasTrabajadosObjetivo: 30,
+        diasFranco: [],
+        diasVacaciones: []
+      };
+      
+      setEnfermerosTemporales([...enfermerosTemporales, nuevoEnfermero]);
+      
+      setDiasTrabajadosPorEnfermero(prev => {
+        const nuevoMap = new Map(prev);
+        nuevoMap.set(nuevoEnfermero.id, 0);
+        return nuevoMap;
+      });
+      
+      alert(`${nombre.trim()} ha sido añadido como suplente temporal.`);
+    } else {
+      alert("Debe ingresar un nombre válido.");
+    }
+  };
+
+  const agregarEnfermeroATurno = (fecha: string, turno: "mañana" | "tarde" | "noche") => {
+    setTurnoParaAgregar({ fecha, turno });
+  };
+
+  const seleccionarEnfermeroParaTurno = (enfermero: Enfermero) => {
+    if (!turnoParaAgregar) return;
+
+    setCalendario(prev => prev.map(dia => {
+      if (dia.fecha === turnoParaAgregar.fecha) {
+        return {
+          ...dia,
+          [turnoParaAgregar.turno]: [...dia[turnoParaAgregar.turno], enfermero]
+        };
+      }
+      return dia;
+    }));
+
+    setDiasTrabajadosPorEnfermero(prev => {
+      const nuevoMap = new Map(prev);
+      const diasActuales = nuevoMap.get(enfermero.id) || 0;
+      nuevoMap.set(enfermero.id, diasActuales + 1);
+      return nuevoMap;
+    });
+
+    setTurnoParaAgregar(null);
+  };
+
+  const enfermerosDisponiblesParaTurno = useMemo(() => {
+    return [...enfermeros, ...enfermerosTemporales].filter(
+      e => e.rango === "Titular" || e.rango === "Suplente"
+    );
+  }, [enfermeros, enfermerosTemporales]);
 
   if (esAdmin === null) {
     return <div className="p-6 text-center">Verificando permisos...</div>;
@@ -498,6 +561,12 @@ const Calendario = () => {
         >
           📥 Descargar Calendario (Excel)
         </button>
+        <button
+          onClick={agregarEnfermeroTemporal}
+          className="bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-yellow-600 transition"
+        >
+          👨⚕️ Añadir Temporal
+        </button>
         {mostrarBotonGuardarCalendario && (
           <button
             onClick={handleGuardarCalendario}
@@ -515,6 +584,7 @@ const Calendario = () => {
           {calendario.map((dia) => {
             const [año, mes, diaNum] = dia.fecha.split("-").map(Number);
             const fecha = new Date(año, mes - 1, diaNum);
+            const esFinde = dia.diaSemana === "Sábado" || dia.diaSemana === "Domingo";
 
             return (
               <div key={dia.fecha} className="border p-4 rounded-lg shadow-md bg-white">
@@ -527,22 +597,42 @@ const Calendario = () => {
                 <TurnoCard 
                   titulo="🌞 Mañana" 
                   enfermeros={dia.mañana} 
-                  diasTrabajados={diasTrabajadosPorEnfermero} 
+                  diasTrabajados={diasTrabajadosPorEnfermero}
+                  onAgregarEnfermero={() => agregarEnfermeroATurno(dia.fecha, "mañana")}
+                  cantidadEsperada={esFinde ? 3 : 4}
+                  fecha={dia.fecha}
                 />
                 <TurnoCard 
                   titulo="🌆 Tarde" 
                   enfermeros={dia.tarde} 
-                  diasTrabajados={diasTrabajadosPorEnfermero} 
+                  diasTrabajados={diasTrabajadosPorEnfermero}
+                  onAgregarEnfermero={() => agregarEnfermeroATurno(dia.fecha, "tarde")}
+                  cantidadEsperada={esFinde ? 3 : 4}
+                  fecha={dia.fecha}
                 />
                 <TurnoCard 
                   titulo="🌙 Noche" 
                   enfermeros={dia.noche} 
-                  diasTrabajados={diasTrabajadosPorEnfermero} 
+                  diasTrabajados={diasTrabajadosPorEnfermero}
+                  onAgregarEnfermero={() => agregarEnfermeroATurno(dia.fecha, "noche")}
+                  cantidadEsperada={2}
+                  fecha={dia.fecha}
                 />
               </div>
             );
           })}
         </div>
+      )}
+
+      {turnoParaAgregar && (
+        <EnfermeroSelectorModal
+          isOpen={!!turnoParaAgregar}
+          onClose={() => setTurnoParaAgregar(null)}
+          enfermerosDisponibles={enfermerosDisponiblesParaTurno}
+          onSelect={seleccionarEnfermeroParaTurno}
+          titulo={`${turnoParaAgregar.turno} - ${turnoParaAgregar.fecha}`}
+          diasTrabajadosPorEnfermero={diasTrabajadosPorEnfermero} // Añade esta línea
+        />
       )}
     </div>
   );
@@ -551,33 +641,81 @@ const Calendario = () => {
 const TurnoCard = ({ 
   titulo, 
   enfermeros,
-  diasTrabajados 
+  diasTrabajados,
+  onAgregarEnfermero,
+  cantidadEsperada,
+  fecha
 }: { 
   titulo: string, 
   enfermeros: Enfermero[],
-  diasTrabajados: Map<number, number>
+  diasTrabajados: Map<number, number>,
+  onAgregarEnfermero: () => void,
+  cantidadEsperada: number,
+  fecha: string
 }) => {
-  // Calcular total de días trabajados para este turno
   const totalDiasTurno = enfermeros.reduce((sum, e) => sum + (diasTrabajados.get(e.id) || 0), 0);
+  const necesitaMasEnfermeros = enfermeros.length < cantidadEsperada;
+  const fechaObj = new Date(fecha);
+  const diaSemana = fechaObj.toLocaleDateString("es-ES", { weekday: "long" });
+  const esFinde = diaSemana === "Sábado" || diaSemana === "Domingo";
+
+  // Separar enfermeros (jefes solo si no es fin de semana)
+  const jefes = esFinde ? [] : enfermeros.filter(e => e.rango === "Jefe");
+  const otrosEnfermeros = enfermeros.filter(e => e.rango !== "Jefe");
 
   return (
-    <div className="border rounded-lg p-3 mt-2">
+    <div className="border rounded-lg p-3 mt-2 relative">
+      {necesitaMasEnfermeros && (
+        <button
+          onClick={onAgregarEnfermero}
+          className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-blue-600 transition-transform hover:scale-110"
+          title="Añadir enfermero"
+        >
+          +
+        </button>
+      )}
+      
       <div className="flex justify-between items-center">
         <h3 className="text-md font-bold">{titulo}</h3>
-        <span className="text-sm text-gray-600">Total días: {totalDiasTurno}</span>
+        <span className="text-sm text-gray-600">
+          {enfermeros.length}/{cantidadEsperada} - Días: {totalDiasTurno}
+        </span>
       </div>
-      <ul className="mt-2">
-        {enfermeros.map((enfermero) => (
-          <li key={enfermero.id} className="flex justify-between">
-            <span>
-              {enfermero.nombre} ({enfermero.rango})
-            </span>
-            <span className="font-semibold">
-              {diasTrabajados.get(enfermero.id) || 0} días
-            </span>
-          </li>
-        ))}
-      </ul>
+      
+      {jefes.length > 0 && (
+        <div className="mt-2">
+          <span className="text-xs font-semibold text-purple-600">JEFE:</span>
+          <ul>
+            {jefes.map(enfermero => (
+              <li key={enfermero.id} className="flex justify-between">
+                <span className="text-purple-600">{enfermero.nombre}</span>
+                <span className="font-semibold text-purple-600">
+                  {diasTrabajados.get(enfermero.id) || 0} días
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
+      <div className="mt-1">
+        <ul>
+          {otrosEnfermeros.map(enfermero => (
+            <li key={enfermero.id} className="flex justify-between">
+              <span>
+                {enfermero.nombre} 
+                <span className="text-xs ml-1">
+                  ({enfermero.rango}
+                  {enfermero.id > 100000 && " temporal"})
+                </span>
+              </span>
+              <span className="font-semibold">
+                {diasTrabajados.get(enfermero.id) || 0} días
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 };
